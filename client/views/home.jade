@@ -1,0 +1,30 @@
+doctype html
+html( lang="en" ng-app )
+  head
+    title Naming Things
+    link( rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css" )
+    link( rel="stylesheet" href="/css/cover.css" )
+    script( src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.0-rc.3/angular.min.js" )
+    script( src="//code.jquery.com/jquery-1.11.0.min.js" )
+    script( src="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js" )
+  body 
+    .site-wrapper
+      .site-wrapper-inner
+        .cover-container
+          .masthead.clearfix
+            .inner
+              h3.masthead-brand Naming Things
+          .inner.cover
+            p.lead.
+              Enter the name of an NPM package or a JavaScript repo on Github to see how its names compare
+              to overall naming culture in the JavaScript world.
+            p.lead
+              .input-group
+                input.form-control( type="text" id="searchBox" placeholder="NPM package or Github repo" )
+                span.input-group-btn
+                  button.btn.btn-default( type="button" ) Analyze
+            p
+              span Or click 
+              a#showStats( href="" ) here
+              span  to see the summary
+          .mastfoot
