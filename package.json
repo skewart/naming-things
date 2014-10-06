@@ -10,7 +10,11 @@
     "jade": "1.5.0",
     "request": "2.44.0",
     "npm": "2.1.0",
-    "esprima": "1.2.2"
+    "esprima": "1.2.2",
+    "tarball-extract": "0.0.3",
+    "npm-registry-client": "3.2.2",
+    "npmconf": "2.1.0",
+    "mongojs": "0.15.1"
   },
   "devDependencies": {
     "should": "^4.0.4"

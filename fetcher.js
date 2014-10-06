@@ -1,23 +1,35 @@
+/**
+	Handles interacting with the npm registry, searching for packages, fetching information
+	about packages, and getting source code into a temporary directory on the file system.
+ */
 
 
 const 
 	fs = require('fs'),
 	npm = require('npm'),
 	request = require('request'),
-	process = require('child_process'),
 	tarball = require('tarball-extract'),
 	npmconf = require('npmconf'),
 	RegClient = require('npm-registry-client');
 
 
 /**
+	A little class to wrap around these methods and provide a way to attach event
+	listeners for key events.
+ */
+function PackageFetcher() {
+	this.onCodeFetched = false;
+}
+
+
+/**
 	Fetches the URL for the tarball of a package from npm and unpacks it
 	@param {string} packageName - The name of the package you want to fetch
-	@param {function} callback	- A callback function to be called when the package has been fetched.
  */
-function fetchPackage( packageName, callback ) {
+PackageFetcher.prototype.fetchPackage = function( packageName ) {
 
-	var uri = 'http://registry.npmjs.org/' + packageName;
+	var self = this,
+		uri = 'http://registry.npmjs.org/' + packageName;
 
 	// Do I need to do this every time?
 	npmconf.load({}, function(err, conf) {
@@ -29,10 +41,15 @@ function fetchPackage( packageName, callback ) {
 				return;
 			}
 			
+			if (!data['dist-tags'] || !data.versions) {
+				console.log('No dist-tags or versions found for ' + packageName + '. Giving up.');
+				return;
+			}
+
 			var latest = data['dist-tags'].latest,
 				latestTarballURL = data.versions[ latest ].dist.tarball;
 
-			fetchTarball( packageName, latestTarballURL, callback );			
+			self.fetchTarball( packageName, latestTarballURL );			
 
 		});
 
@@ -46,25 +63,27 @@ function fetchPackage( packageName, callback ) {
  	given directory.
  	@param {string} packageName - The name of the package whose tarball you're fetching
  	@param {string} tarballURL 	- The URL for the tarball you're fetching
- 	@param {function} callback	- A callback function that is called when the tarball has been fetched and upacked
  */
-function fetchTarball( packageName, tarballURL, callback ) {
+PackageFetcher.prototype.fetchTarball = function( packageName, tarballURL ) {
 
-	var tmpDirPath = process.env.PKG_TEMP_DIR || './tmp' 
+	var self = this,
+		tmpDirPath = process.env.PKG_TEMP_DIR || __dirname + '/tmp',
 		pkgDirPath = tmpDirPath + '/' + packageName,
 		tarballPath = pkgDirPath + '/' + packageName + '.tar.gz',
 		extractDir = pkgDirPath + '/' + packageName;
-
-	fs.exists( tmpDirPath, function(exists) {
+	
+	fs.exists( extractDir, function(exists) {
 
 		// If you've already downloaded the package.  This should never happen.
 		if (exists) {
 			// TODO Figure out the best thing to do in this situation. fs.rmdir ? Just return?
+			console.log('directory already exists for ' + packageName );
 			return;
 		}
 
 		fs.mkdir( pkgDirPath, function(err) {
 			if (err) {
+				console.log('Error trying to make a directory at ' + pkgDirPath );
 				console.error( err );
 				return;
 			}
@@ -73,7 +92,9 @@ function fetchTarball( packageName, tarballURL, callback ) {
 					console.error( err );
 					return;
 				}
-				callback( result );
+				if ( self.onCodeFetched ) {
+					self.onCodeFetched.call( self, extractDir );
+				}
 			});
 		});
 
@@ -85,12 +106,12 @@ function fetchTarball( packageName, tarballURL, callback ) {
 /**
 	Fetches source code for all of the packages that match a given search term and then calls a callback
 	@param {string} searchTerm 	- The string to be used as the search term
-	@param {function} callback	- A callback function that gets called when the source code has been fetched
  */
-function fetchAllSearchResults( searchTerm, callback ) {
+PackageFetcher.prototype.fetchAllSearchResults = function( searchTerm ) {
 
 	// TODO Figure out what we really need here, probably just the name
-	var url = 'http://npmsearch.com/query?fl=name,description,homepage&rows=200&sort=rating+desc&q=' + searchTerm;
+	var self = this,
+		url = 'http://npmsearch.com/query?fl=name,description,homepage&rows=200&sort=rating+desc&q=' + searchTerm;
 
 	request({json: true, url: url}, function(err, resp, data) {
 		if (err) {
@@ -99,9 +120,14 @@ function fetchAllSearchResults( searchTerm, callback ) {
 		}
 		var results = data.results;
 		for ( var i = 0, len = results.length; i < len; i++ ) {
-			fetchPackage( results[i].name, callback );
+			self.fetchPackage( results[i].name );
 		}
 	});
+}
+
+
+module.exports = {
+	PackageFetcher: PackageFetcher
 }
 
 
